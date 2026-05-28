@@ -22,6 +22,8 @@ void Game::Init(){
     BeginBatchDraw(); // 开启双缓冲模式
 
     Player = new Mario(100.0f, 400.0f); // 新增：在坐标 (100, 400) 生成马里奥
+
+    Player->LoadResources("res/graphics/mario_bros.png", "res/graphics/mario.json");
     isRunning = true; //游戏开始运行
 }
 

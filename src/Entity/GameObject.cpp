@@ -1,4 +1,4 @@
-#include "GameObject.h"
+#include "Entity\GameObject.h"
 #include "Utils\AABB.h"
 
 GameObject::GameObject(float xx,float yy,int w,int h)

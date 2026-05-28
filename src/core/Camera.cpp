@@ -1,4 +1,4 @@
-#include "Camera.h"
+#include "core\Camera.h"
 #include <algorithm>
 
 Camera::Camera(int screenWidth, int mapWidth) 

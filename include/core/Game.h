@@ -1,4 +1,5 @@
 #pragma once
+#include "Entity\Mario.h"
 
 class Game{
 
@@ -20,4 +21,5 @@ private:
     int windowWidth; //窗口宽度
     int windowHeight; //窗口高度
     int FPS; //游戏帧率
+    Mario* Player; //添加玩家
 };

@@ -1,4 +1,4 @@
-#include "Game.h"
+#include "core\Game.h"
 #include <graphics.h>
 #include <ctime>
 
@@ -13,6 +13,7 @@ Game::Game()
 
 Game::~Game(){
     // 析构函数，如果 Init 里 new 了东西，这里要 delete
+    if(Player)delete Player;
 }
 
 void Game::Init(){
@@ -20,6 +21,7 @@ void Game::Init(){
 
     BeginBatchDraw(); // 开启双缓冲模式
 
+    Player = new Mario(100.0f, 400.0f); // 新增：在坐标 (100, 400) 生成马里奥
     isRunning = true; //游戏开始运行
 }
 
@@ -58,13 +60,14 @@ void Game::ProcessInput(){
 
 void Game::Update(){
     //计算逻辑
+    if(Player)Player->Update();
 }
 
 void Game::Render(){
     //清除内存中的渲染
     cleardevice();
     //绘制
-
+    if(Player) Player->Render();
     //投送画面
     FlushBatchDraw();
 }

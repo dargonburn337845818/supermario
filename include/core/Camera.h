@@ -22,7 +22,7 @@ private:
     int   m_ScreenW = 0;    // 物理窗口宽  (800)
     int   m_ScreenH = 0;    // 物理窗口高  (600)
     int   m_MapW    = 0;    // 关卡逻辑宽  (3390)
-    int   m_MapH    = 0;    // 关卡逻辑高  (223)
+    int   m_MapH    = 0;    // 关卡逻辑高  (224)
 
     float m_Scale = 1.0f;   // 逻辑→屏幕 缩放比
     int   m_ViewW = 0;      // 逻辑视口宽  (≈297)

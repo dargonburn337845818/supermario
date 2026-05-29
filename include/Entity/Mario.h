@@ -1,6 +1,9 @@
 #pragma once
 #include <string>
-#include "component\Animation.h" 
+#include "component\Animation.h"
+#include "core\levelManager.h"
+#include "Utils\AABB.h" 
+class LevelManager;
 
 class Mario {
 public:
@@ -8,7 +11,7 @@ public:
     ~Mario();
 
     void LoadResources(const std::string& imagePath, const std::string& jsonPath);
-    void Update();
+    void Update(const LevelManager& levelMgr);
     void Render(); 
 
     bool isOnGround = true;

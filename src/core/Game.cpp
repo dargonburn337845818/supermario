@@ -1,6 +1,7 @@
 #include "core\Game.h"
 #include <graphics.h>
 #include <ctime>
+#include <windows.h>
 
 Game::Game()
     :isRunning(false),
@@ -20,9 +21,14 @@ void Game::Init(){
     initgraph(windowWidth,windowHeight); //创建窗口
     setbkcolor(RGB(92, 148, 252)); // 设置背景色为经典马里奥蓝天
     BeginBatchDraw(); // 开启双缓冲模式
+    if (!m_LevelMgr.LoadLevel("res/level/level_1.json")) {
+        // 如果加载失败，可以弹框提示或写日志
+        MessageBox(NULL, "地图加载失败！", "错误", MB_OK);
+        isRunning = false;
+        return;
+    }
 
-    Player = new Mario(100.0f, 400.0f); // 新增：在坐标 (100, 400) 生成马里奥
-
+    Player = new Mario(110.0f, 522.0f); 
     Player->LoadResources("res/graphics/mario_bros.png", "res/graphics/mario.json");
     isRunning = true; //游戏开始运行
 }
@@ -62,13 +68,22 @@ void Game::ProcessInput(){
 
 void Game::Update(){
     //计算逻辑
-    if(Player)Player->Update();
+    if(Player) Player->Update(m_LevelMgr);
 }
 
 void Game::Render(){
     //清除内存中的渲染
     cleardevice();
     //绘制
+    setfillcolor(GREEN);
+    for (const auto& wall : m_LevelMgr.GetColliders()) {
+        fillrectangle(
+            static_cast<int>(wall.box.x), 
+            static_cast<int>(wall.box.y), 
+            static_cast<int>(wall.box.x + wall.box.width), 
+            static_cast<int>(wall.box.y + wall.box.height)
+        );
+    }
     if(Player) Player->Render();
     //投送画面
     FlushBatchDraw();

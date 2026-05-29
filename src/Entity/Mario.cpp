@@ -41,7 +41,7 @@ void Mario::LoadResources(const std::string& imagePath, const std::string& jsonP
     }
 }
 
-void Mario::Update() {
+void Mario::Update(const LevelManager& levelMgr) {
     if (isDead) {
         velocityY += speedConfig.gravity; // 死亡只受重力
         y += velocityY;
@@ -92,8 +92,8 @@ void Mario::Update() {
     }
 
     // 限制最大水平速度
-    if (velocityX > speedConfig.max_walk_speed) velocityX = speedConfig.max_walk_speed;
-    if (velocityX < -speedConfig.max_walk_speed) velocityX = -speedConfig.max_walk_speed;
+    if (velocityX > currentMaxSpeed) velocityX = currentMaxSpeed;
+    if (velocityX < -currentMaxSpeed) velocityX = -currentMaxSpeed;
 
     // 摩擦力 (松开按键时)
     bool isMoving = (inputLeft || inputRight);
@@ -103,17 +103,49 @@ void Mario::Update() {
     }
 
     // 重力
-    if (!isOnGround) {
-        velocityY += speedConfig.gravity;
-        if (velocityY > speedConfig.max_y_velocity) velocityY = speedConfig.max_y_velocity;
+    velocityY += speedConfig.gravity;
+    if (velocityY > speedConfig.max_y_velocity) velocityY = speedConfig.max_y_velocity;
+
+    // --- ★ 核心修改：分轴碰撞解决法 ★ ---
+    isOnGround = false; // 每帧重置着地状态，由碰撞检测重新赋予
+    // 1. Y 轴移动与碰撞
+    y += velocityY;
+    AABB marioBox = {x, y, (float)width, (float)height};
+    for (const auto& wall : levelMgr.GetColliders()) {
+        if (IsOverlapping(marioBox, wall.box)) {
+            if (velocityY > 0) { // 掉落踩地
+                y = wall.box.y - height; // 把脚底贴到墙顶
+                velocityY = 0;
+                isOnGround = true;
+            } else if (velocityY < 0) { // 跳跃撞头
+                y = wall.box.y + wall.box.height; // 把头顶贴到墙底
+                velocityY = 0;
+                // TODO: 如果 wall.type 是砖块/问号块，触发顶块逻辑
+            }
+            marioBox.y = y; // 更新碰撞箱，防止后续检测误判
+        }
+    }
+    // 2. X 轴移动与碰撞
+    x += velocityX;
+    marioBox.x = x;
+    for (const auto& wall : levelMgr.GetColliders()) {
+        if (IsOverlapping(marioBox, wall.box)) {
+            if (velocityX > 0) { // 向右撞墙
+                x = wall.box.x - width;
+                velocityX = 0;
+            } else if (velocityX < 0) { // 向左撞墙
+                x = wall.box.x + wall.box.width;
+                velocityX = 0;
+            }
+            marioBox.x = x;
+        }
     }
 
-    // 更新位置
-    x += velocityX;
-    y += velocityY;
-
-    // 临时地面碰撞
-    if (y > 400) { y = 400; velocityY = 0; isOnGround = true; }
+    //左端空气墙
+    if (x < 0) {
+        x = 0;
+        velocityX = 0;
+    }
 
     // 2.动画状态机
     std::string targetSet = "right_small_stay"; //待机状态

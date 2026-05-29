@@ -1,13 +1,14 @@
 #pragma once
-#include <graphics.h>
-namespace AABB {
-    // 检测两个矩形是否发生重叠
-    inline bool CheckCollision(const RECT& a, const RECT& b) {
-        return (a.left < b.right && 
-                a.right > b.left && 
-                a.top < b.bottom && 
-                a.bottom > b.top);
-    }
-    
-    // 后续还可以扩展：计算重叠面积、获取碰撞方向等
+
+struct AABB {
+    float x = 0.0f;
+    float y = 0.0f;
+    float width = 0.0f;
+    float height = 0.0f;
+};
+
+// 碰撞检测辅助函数：判断两个AABB是否重叠
+inline bool IsOverlapping(const AABB& a, const AABB& b) {
+    return (a.x < b.x + b.width && a.x + a.width > b.x &&
+            a.y < b.y + b.height && a.y + a.height > b.y);
 }

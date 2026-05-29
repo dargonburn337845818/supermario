@@ -1,48 +1,45 @@
 #pragma once
-#include "GameObject.h"
-#include <graphics.h>
-#include <vector>
 #include <string>
+#include "component\Animation.h" 
 
-// 对应 JSON 里的每一帧
-struct Frame {
-    int x;
-    int y;
-    int width;
-    int height;
-};
-
-// 对应 JSON 里的 speed 节点
-struct SpeedConfig {
-    float max_walk_speed;
-    float max_run_speed;
-    float max_y_velocity;
-    float walk_accel;
-    float run_accel;
-    float jump_velocity;
-};
-
-class Mario : public GameObject {
+class Mario {
 public:
-    Mario(float x, float y);
-    
-    // 新增：加载图片和 JSON 配置
+    Mario(float startX, float startY);
+    ~Mario();
+
     void LoadResources(const std::string& imagePath, const std::string& jsonPath);
-    
-    void Update() override;
-    void Render() override;
+    void Update();
+    void Render(); 
+
+    bool isOnGround = true;
+    bool isDead = false;
+    bool isBig = false;
+    bool isFire = false;
+    bool facingRight = true;
 
 private:
-    IMAGE spriteSheet; // 精灵图表
+    Animation animation; 
+
+    float x, y;
+    float velocityX, velocityY;
+    int width, height; // 碰撞箱
     
-    // 动画数据 (目前只存小马里奥向右的，后续可扩展向左、大马里奥等)
-    std::vector<Frame> frames_right_small_normal;
-    
-    // 物理数据 (从 JSON 读取)
-    SpeedConfig speedConfig;
-    
-    // 动画控制
-    int currentFrame;   // 当前播放到哪一帧
-    int frameCounter;   // 帧计数器，用于控制动画切换速度
-    bool isMoving;      // 是否正在移动
+    int walkFrameTimer = 0; //动画计时器，固定帧数后切换动画帧
+    int walkFrameIndex = 1; //动画帧索引
+
+    // 新增状态标记
+    bool isRunning = false;   //奔跑
+    bool isBraking = false;   // 急刹
+    bool isAttack = false;   // 坐到敌人
+
+    struct SpeedConfig {
+        float max_walk_speed = 1.5f;
+        float max_run_speed = 3.0f;
+        float walk_accel = 0.1f;
+        float run_accel = 0.3f;
+        float jump_velocity = -4.5f;
+        float brake_accel = 0.2f;
+        float gravity = 0.25f;
+        float max_y_velocity = 4.0f;
+    } speedConfig;
 };

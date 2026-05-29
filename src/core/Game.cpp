@@ -18,7 +18,7 @@ Game::~Game(){
 
 void Game::Init(){
     initgraph(windowWidth,windowHeight); //创建窗口
-
+    setbkcolor(RGB(92, 148, 252)); // 设置背景色为经典马里奥蓝天
     BeginBatchDraw(); // 开启双缓冲模式
 
     Player = new Mario(100.0f, 400.0f); // 新增：在坐标 (100, 400) 生成马里奥

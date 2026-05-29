@@ -1,4 +1,5 @@
 #include "Entity\Mario.h"
+#include "component\PhysicsComponent.h" 
 #include "Utils\json.hpp"
 #include <graphics.h>
 #include <fstream>
@@ -9,8 +10,7 @@ using json = nlohmann::json;
 
 Mario::Mario(float startX, float startY)  {
     x = startX; y = startY;
-    width = 16; height = 16; // 碰撞箱
-    velocityX = 0; velocityY = 0;
+    physics.bounds = {x, y, 16.0f, 16.0f}; 
 }
 
 Mario::~Mario() {}
@@ -28,12 +28,12 @@ void Mario::LoadResources(const std::string& imagePath, const std::string& jsonP
             // 使用 value 方法读取，如果 JSON 缺失则使用 struct 里的默认值兜底
             speedConfig.max_walk_speed = s.value("max_walk_speed", speedConfig.max_walk_speed);
             speedConfig.max_run_speed  = s.value("max_run_speed", speedConfig.max_run_speed);
-            speedConfig.max_y_velocity = s.value("max_y_velocity", speedConfig.max_y_velocity);
+            physics.max_y_velocity = s.value("max_y_velocity", physics.max_y_velocity);
             speedConfig.walk_accel     = s.value("walk_accel", speedConfig.walk_accel);
             speedConfig.run_accel      = s.value("run_accel", speedConfig.run_accel);
             speedConfig.jump_velocity  = s.value("jump_velocity", speedConfig.jump_velocity);
             speedConfig.brake_accel    = s.value("brake_accel", speedConfig.brake_accel);
-            speedConfig.gravity        = s.value("gravity", speedConfig.gravity);
+            physics.gravity        = s.value("gravity", physics.gravity);
         }
     } catch (json::exception& e) {
         // 防御性编程：JSON格式错误不崩溃
@@ -43,8 +43,9 @@ void Mario::LoadResources(const std::string& imagePath, const std::string& jsonP
 
 void Mario::Update(const LevelManager& levelMgr) {
     if (isDead) {
-        velocityY += speedConfig.gravity; // 死亡只受重力
-        y += velocityY;
+        physics.velY += physics.gravity;  // 死亡只受重力
+        physics.bounds.y += physics.velY;
+        y = physics.bounds.y;  
         animation.SetAnimSet("right_small_die");
         animation.SetFrameIndex(0);
         return;
@@ -62,89 +63,67 @@ void Mario::Update(const LevelManager& levelMgr) {
     isBraking = false;
 
     if (inputRight) {
-        if (velocityX < -0.1f) {
+        if (physics.velX < -0.1f) {
             // 当前正在向左移动，按右键 -> 视为急刹/减速
-            velocityX += speedConfig.brake_accel; 
+            physics.velX += speedConfig.brake_accel; 
             if (isRunning && isOnGround) isBraking = true;
             // 注意：这里不改变 facingRight！继续保持面朝左滑行
         } else {
             // 速度已经降为0或正在向右移动 -> 正常加速，允许转向
-            velocityX += currentAccel;
+            physics.velX += currentAccel;
             facingRight = true; 
         }
     }
     if (inputLeft) {
-        if (velocityX > 0.1f) {
+        if (physics.velX > 0.1f) {
             // 当前正在向右移动，按左键 -> 视为急刹/减速
-            velocityX -= speedConfig.brake_accel;
+            physics.velX -= speedConfig.brake_accel;
             if (isRunning && isOnGround) isBraking = true;
             // 注意：这里不改变 facingRight！继续保持面朝右滑行
         } else {
             // 速度已经降为0或正在向左移动 -> 正常加速，允许转向
-            velocityX -= currentAccel;
+            physics.velX -= currentAccel;
             facingRight = false; 
         }
     }
     
     if (inputJump && isOnGround) {
-        velocityY = speedConfig.jump_velocity;
+        physics.velY = speedConfig.jump_velocity;
         isOnGround = false;
     }
 
     // 限制最大水平速度
-    if (velocityX > currentMaxSpeed) velocityX = currentMaxSpeed;
-    if (velocityX < -currentMaxSpeed) velocityX = -currentMaxSpeed;
+    if (physics.velX > currentMaxSpeed) physics.velX = currentMaxSpeed;
+    if (physics.velX < -currentMaxSpeed) physics.velX = -currentMaxSpeed;
 
     // 摩擦力 (松开按键时)
     bool isMoving = (inputLeft || inputRight);
     if (!isMoving && isOnGround) {
-        velocityX *= 0.85f; 
-        if (std::abs(velocityX) < 0.1f) velocityX = 0;
+        physics.velX *= 0.85f; 
+        if (std::abs(physics.velX) < 0.1f) physics.velX = 0;
     }
 
-    // 重力
-    velocityY += speedConfig.gravity;
-    if (velocityY > speedConfig.max_y_velocity) velocityY = speedConfig.max_y_velocity;
-
-    // --- ★ 核心修改：分轴碰撞解决法 ★ ---
-    isOnGround = false; // 每帧重置着地状态，由碰撞检测重新赋予
-    // 1. Y 轴移动与碰撞
-    y += velocityY;
-    AABB marioBox = {x, y, (float)width, (float)height};
-    for (const auto& wall : levelMgr.GetColliders()) {
-        if (IsOverlapping(marioBox, wall.box)) {
-            if (velocityY > 0) { // 掉落踩地
-                y = wall.box.y - height; // 把脚底贴到墙顶
-                velocityY = 0;
-                isOnGround = true;
-            } else if (velocityY < 0) { // 跳跃撞头
-                y = wall.box.y + wall.box.height; // 把头顶贴到墙底
-                velocityY = 0;
-                // TODO: 如果 wall.type 是砖块/问号块，触发顶块逻辑
-            }
-            marioBox.y = y; // 更新碰撞箱，防止后续检测误判
-        }
+    // --- ★ 核心重构：将位置和碰撞全权交给 PhysicsSystem ★ ---
+    // 保持物理组件的坐标与 Mario 的逻辑坐标同步
+    physics.bounds.x = x;
+    physics.bounds.y = y;
+    // 调用物理系统更新（处理重力、移动、碰撞回推）
+    PhysicsSystem::Update(physics, physics.bounds, levelMgr);
+    // 从物理系统取回计算后的坐标
+    x = physics.bounds.x;
+    y = physics.bounds.y;
+    isOnGround = physics.isOnGround;
+    // 处理物理系统抛出的撞头事件
+    if (physics.hitHead) {
+        // TODO: 根据 physics.hitHeadType 和 physics.hitHeadIndex 触发顶砖块逻辑
+        // 比如: if (physics.hitHeadType == SolidType::BRICK) { ... }
+        physics.hitHead = false; // 重置事件
     }
-    // 2. X 轴移动与碰撞
-    x += velocityX;
-    marioBox.x = x;
-    for (const auto& wall : levelMgr.GetColliders()) {
-        if (IsOverlapping(marioBox, wall.box)) {
-            if (velocityX > 0) { // 向右撞墙
-                x = wall.box.x - width;
-                velocityX = 0;
-            } else if (velocityX < 0) { // 向左撞墙
-                x = wall.box.x + wall.box.width;
-                velocityX = 0;
-            }
-            marioBox.x = x;
-        }
-    }
-
-    //左端空气墙
+    // 左端空气墙
     if (x < 0) {
-        x = 0;
-        velocityX = 0;
+        x = 0; 
+        physics.velX = 0;
+        physics.bounds.x = 0;
     }
 
     // 2.动画状态机
@@ -157,6 +136,7 @@ void Mario::Update(const LevelManager& levelMgr) {
         // JSON中 jump 只有1帧 (索引0)
         targetFrame = 0; 
         walkFrameIndex = 0; // 重置，为落地走路做准备
+        walkFrameTimer = 0;
     }
     else if (isBraking) {
         targetSet = "right_small_stop";
@@ -180,6 +160,7 @@ void Mario::Update(const LevelManager& levelMgr) {
         // JSON中 stay 只有1帧 (索引0)
         targetFrame = 0; 
         walkFrameIndex = 0; // 重置，为下次起步做准备
+        walkFrameTimer = 0;
     }
 
     // 最终推送给动画组件
@@ -187,15 +168,17 @@ void Mario::Update(const LevelManager& levelMgr) {
     animation.SetFrameIndex(targetFrame);
 }
 
-void Mario::Render() {
+void Mario::Render(IMAGE* target) {
     // 获取当前帧宽高用于居中偏移
     int currentFrameWidth = animation.GetCurrentFrameWidth();
     int currentFrameHeight = animation.GetCurrentFrameHeight();
 
-    // 居中绘制，防止不同帧宽高造成的抖动
-    int drawX = (int)x + (width - currentFrameWidth) / 2; 
-    int drawY = (int)y + (height - currentFrameHeight);   // 底部对齐
-
+    // 使用 physics.bounds 的宽高作为逻辑碰撞箱
+    int logicWidth = (int)physics.bounds.width;
+    int logicHeight = (int)physics.bounds.height;
+    int drawX = (int)x + (logicWidth - currentFrameWidth) / 2; 
+    int drawY = (int)y + (logicHeight - currentFrameHeight); 
+    
     // 传入 !facingRight 决定是否翻转 (向左时翻转)
-    animation.Draw(drawX, drawY, !facingRight);
+    animation.Draw(target, drawX, drawY, !facingRight);
 }

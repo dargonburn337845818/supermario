@@ -1,32 +1,44 @@
 #include "core\Camera.h"
 #include <algorithm>
 
-Camera::Camera(int screenWidth, int mapWidth) 
-    : x(0.0f), screenWidth(screenWidth), mapWidth(mapWidth) {}
+void Camera::Init(int screenW, int screenH, int mapW, int mapH) {
+    m_ScreenW = screenW;
+    m_ScreenH = screenH;
+    m_MapW    = mapW;
+    m_MapH    = mapH;
+
+    // 以高度为基准等比缩放，保证纵向完整显示
+    m_Scale = (float)m_ScreenH / m_MapH;        // 600/223 ≈ 2.69
+
+    // 反推逻辑视口能看多宽
+    m_ViewW = (int)(m_ScreenW / m_Scale);        // 800/2.69 ≈ 297
+    m_ViewH = m_MapH;                             // 纵向全显
+
+    // 防止关卡比视口还窄
+    if (m_ViewW > m_MapW) m_ViewW = m_MapW;
+
+    x = 0.0f;
+}
 
 void Camera::Update(float targetX, float targetWidth) {
-    // 1. 计算目标的中心点X坐标
+
+    // 1. 目标中心
     float targetCenterX = targetX + targetWidth / 2.0f;
-    
-    // 2. 计算当前摄像机视口的中心点X坐标
-    float cameraCenterX = x + screenWidth / 2.0f;
 
-    // 3. 核心逻辑：仅当目标超过视口中心点时，摄像机才向右跟随
-    // 保证了摄像机永远不会向左移动
+    // 2. 视口中心
+    float cameraCenterX = x + m_ViewW / 2.0f;
+
+    // 3. 核心：只向右跟随，永不向左
     if (targetCenterX > cameraCenterX) {
-        x = targetCenterX - screenWidth / 2.0f;
+        x = targetCenterX - m_ViewW / 2.0f;
     }
 
-    // 4. 边界限制：摄像机视口不能超出地图右边缘
-    float maxCamX = static_cast<float>(mapWidth - screenWidth);
-    if (x > maxCamX) {
-        x = maxCamX;
-    }
+    // 4. 右边界
+    float maxCamX = static_cast<float>(m_MapW - m_ViewW);
+    if (x > maxCamX) x = maxCamX;
 
-    // 5. 边界限制：摄像机视口不能超出地图左边缘 (起点)
-    if (x < 0.0f) {
-        x = 0.0f;
-    }
+    // 5. 左边界
+    if (x < 0.0f) x = 0.0f;
 }
 
 float Camera::GetX() const {
@@ -34,7 +46,5 @@ float Camera::GetX() const {
 }
 
 float Camera::GetRenderOffsetX() const {
-    // 世界坐标转屏幕坐标的偏移量
-    // 屏幕X = 物体世界X - 摄像机世界X
-    return -x; 
+    return -x;
 }

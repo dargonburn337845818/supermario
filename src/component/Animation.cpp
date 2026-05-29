@@ -36,7 +36,7 @@ void Animation::ClearFrames() {
 }
 
 // 专门用于绘制带 Alpha 通道的透明图片
-void Animation::DrawAlpha(int x, int y, IMAGE* img) {
+void Animation::DrawAlpha(IMAGE* target, int x, int y, IMAGE* img) {
     if (!img) return;
     
     // 确保函数已加载
@@ -44,7 +44,7 @@ void Animation::DrawAlpha(int x, int y, IMAGE* img) {
     
     // 如果成功找到了 AlphaBlend 函数
     if (pfnAlphaBlend) {
-        HDC hdcDest = GetImageHDC(NULL); 
+        HDC hdcDest = GetImageHDC(target); 
         HDC hdcSrc = GetImageHDC(img);   
         
         int w = img->getwidth();
@@ -136,16 +136,16 @@ void Animation::SetFrameIndex(int index) {
 }
 
 //根据方向贴图
-void Animation::Draw(int x, int y, bool flip) {
+void Animation::Draw(IMAGE* target, int x, int y, bool flip) {
     if (!currentSet || currentSet->empty()) return;
     Frame& f = (*currentSet)[currentFrameIndex];
 
     //根据方向直接贴预切好的小图
     //putimage 默认是不透明的
     if (flip) {
-        DrawAlpha(x, y, f.imgFlipped);
+        DrawAlpha(target, x, y, f.imgFlipped);
     } else {
-        DrawAlpha(x, y, f.imgOriginal);
+        DrawAlpha(target, x, y, f.imgOriginal);
     }
 }
 

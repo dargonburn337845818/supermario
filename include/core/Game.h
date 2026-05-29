@@ -1,6 +1,7 @@
 #pragma once
 #include "Entity\Mario.h"
 #include "core\levelManager.h" 
+#include "Camera.h"
 
 class Game{
 
@@ -22,6 +23,9 @@ private:
     int windowWidth; //窗口宽度
     int windowHeight; //窗口高度
     int FPS; //游戏帧率
-    Mario* Player; //添加玩家
+    Mario* Player = nullptr; //添加玩家
+    IMAGE m_LevelBackground; //背景图
+    IMAGE* m_GameScreen; //离屏渲染画布
+    Camera m_Camera; //摄像机
     LevelManager m_LevelMgr; //添加地图管理器
 };

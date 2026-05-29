@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include "component\PhysicsComponent.h"
 #include "component\Animation.h"
 #include "core\levelManager.h"
 #include "Utils\AABB.h" 
@@ -12,8 +13,11 @@ public:
 
     void LoadResources(const std::string& imagePath, const std::string& jsonPath);
     void Update(const LevelManager& levelMgr);
-    void Render(); 
+    void Render(IMAGE* target); 
 
+    float GetX()const { return x; }
+    float GetY()const { return y; }
+    float GetWidth() const { return m_Width; }
     bool isOnGround = true;
     bool isDead = false;
     bool isBig = false;
@@ -21,16 +25,16 @@ public:
     bool facingRight = true;
 
 private:
+    PhysicsComponent physics; 
     Animation animation; 
 
     float x, y;
-    float velocityX, velocityY;
-    int width, height; // 碰撞箱
-    
+    float m_Width  = 16.0f;   // ★ 小马里奥逻辑宽度
+    float m_Height = 16.0f;   // ★ 小马里奥逻辑高度
+
     int walkFrameTimer = 0; //动画计时器，固定帧数后切换动画帧
     int walkFrameIndex = 1; //动画帧索引
 
-    // 新增状态标记
     bool isRunning = false;   //奔跑
     bool isBraking = false;   // 急刹
     bool isAttack = false;   // 坐到敌人
@@ -42,7 +46,5 @@ private:
         float run_accel = 0.3f;
         float jump_velocity = -4.5f;
         float brake_accel = 0.2f;
-        float gravity = 0.25f;
-        float max_y_velocity = 4.0f;
     } speedConfig;
 };

@@ -1,12 +1,74 @@
 #include "core\LevelManager.h"
+#include "core\Game.h"
 #include "Utils\json.hpp"
 #include <fstream>
 #include <iostream>
+#include <graphics.h>
 
 using json = nlohmann::json;
 
 LevelManager::LevelManager() {}
 
+void LevelManager::OnBlockHit(int index, SolidType type) {
+    if (index < 0 || index >= m_SolidColliders.size()) return;
+    
+    auto& block = m_SolidColliders[index];
+    // 处理问号箱
+    if (type == SolidType::BOX && !block.isHit) {
+        block.isHit = true; // 标记为已撞击
+        block.bounceTimer = 10;
+        // 弹出金币特效
+        CoinEffect coin;
+        coin.x = block.bounds.x + block.bounds.width / 2 - 16; // 居中
+        coin.y = block.bounds.y - 32;                          // 从顶部弹出
+        m_CoinEffects.push_back(coin);
+        
+        // 这里还可以加：播放音效、加分等逻辑
+    }
+    // 处理砖块 (小马里奥顶不动，大马里奥顶碎，目前先留空，或者做个弹起动画)
+    else if (type == SolidType::BRICK) {
+        block.bounceTimer = 10; // 砖块也能弹起
+    }
+}
+
+void LevelManager::SpawnCoinEffect(int blockIndex) {
+    if (blockIndex < 0 || blockIndex >= m_SolidColliders.size()) return;
+    
+    auto& block = m_SolidColliders[blockIndex];
+    // 金币出现的X位置：方块水平居中；Y位置：方块顶部
+    CoinEffect coin;
+    coin.x = block.bounds.x + block.bounds.width / 2 - 16; // 假设金币宽32，居中偏移16
+    coin.y = block.bounds.y - 32; // 从方块顶部弹出
+    
+    m_CoinEffects.push_back(coin);
+}
+
+void LevelManager::UpdateEffects() {
+    for (auto& coin : m_CoinEffects) {
+        coin.velY += 0.4f; // 金币受重力影响
+        coin.y += coin.velY;
+        coin.life--;
+    }
+    // 清除生命结束的金币
+    m_CoinEffects.erase(std::remove_if(m_CoinEffects.begin(), m_CoinEffects.end(),
+        [](const CoinEffect& c) { return c.life <= 0; }), m_CoinEffects.end());
+
+    for (auto& block : m_SolidColliders) {
+        if (block.bounceTimer > 0) {
+            block.bounceTimer--;
+            // 前5帧上升，后5帧下落，绝对精准归零！
+            if (block.bounceTimer > 5) {
+                block.bounceOffset = -4.0f; // 上升高度
+            } else {
+                block.bounceOffset = -4.0f * (block.bounceTimer / 5.0f); // 线性回落
+            }
+            
+            if (block.bounceTimer == 0) {
+                block.bounceOffset = 0.0f; // 强制归零，绝不漂移
+            }
+        }
+    }
+}
 
 //将不同形态的地图元素（水管、砖块、地面等）提取出它们的物理边界（AABB），打上类型标签（SolidType），并记录原始索引，统一存入 m_SolidColliders 数组
 void LevelManager::BuildSolidColliders() {
@@ -17,7 +79,7 @@ void LevelManager::BuildSolidColliders() {
             m_SolidColliders.push_back({
                 elements[i].bounds,
                 type, 
-                i                   // 记录原始索引，供后续交互使用
+                (int)m_SolidColliders.size()                  // 记录原始索引，供后续交互使用
             });
         }
     };

@@ -36,27 +36,19 @@ void Animation::ClearFrames() {
 }
 
 // 专门用于绘制带 Alpha 通道的透明图片
-void Animation::DrawAlpha(IMAGE* target, int x, int y, IMAGE* img) {
+void Animation::DrawAlpha(IMAGE* target, int x, int y, int destW, int destH, IMAGE* img) {
     if (!img) return;
-    
-    // 确保函数已加载
     LoadAlphaBlendFunc(); 
     
-    // 如果成功找到了 AlphaBlend 函数
     if (pfnAlphaBlend) {
         HDC hdcDest = GetImageHDC(target); 
         HDC hdcSrc = GetImageHDC(img);   
         
-        int w = img->getwidth();
-        int h = img->getheight();
-        
         BLENDFUNCTION bf = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
         
-        // 通过函数指针调用真正的 AlphaBlend
-        pfnAlphaBlend(hdcDest, x, y, w, h, hdcSrc, 0, 0, w, h, bf);
-    } else {
-        // 极端情况兜底：如果系统连这个 dll 都没有（几乎不可能），就用普通贴图
-        putimage(x, y, img);
+        // 注意对比原版：目标区域变成了 destW, destH；源区域依然是图片原尺寸
+        // Windows GDI 的 AlphaBlend 会自动帮我们把源图缩放到目标区域！
+        pfnAlphaBlend(hdcDest, x, y, destW, destH, hdcSrc, 0, 0, img->getwidth(), img->getheight(), bf);
     }
 }
 
@@ -97,13 +89,12 @@ void Animation::Load(const std::string& imagePath, const std::string& jsonPath) 
                 frame.x = f["x"]; frame.y = f["y"];
                 frame.width = f["width"]; frame.height = f["height"];
 
-                // 核心优化：加载时就把图切出来，并且生成翻转图
-                // 1. 切出原图
+                // 1. 切出原始小图 (16x16)
                 frame.imgOriginal = new IMAGE(frame.width, frame.height);
-                SetWorkingImage(frame.imgOriginal); // 把小图设为绘图设备
-                // 将大图的 (frame.x, frame.y) 开始的 (frame.width, frame.height) 区域，画到小图的 (0,0) 处
+                SetWorkingImage(frame.imgOriginal);
                 putimage(0, 0, frame.width, frame.height, &spriteSheet, frame.x, frame.y); 
-                SetWorkingImage(NULL);               // 恢复屏幕绘图设备
+                SetWorkingImage(NULL);
+
                 // 2. 创建同等大小的翻转图并生成
                 frame.imgFlipped = new IMAGE(frame.width, frame.height);
                 FlipImage(frame.imgOriginal, frame.imgFlipped);
@@ -136,16 +127,14 @@ void Animation::SetFrameIndex(int index) {
 }
 
 //根据方向贴图
-void Animation::Draw(IMAGE* target, int x, int y, bool flip) {
+void Animation::Draw(IMAGE* target, int x, int y, int destW, int destH, bool flip) {
     if (!currentSet || currentSet->empty()) return;
     Frame& f = (*currentSet)[currentFrameIndex];
-
-    //根据方向直接贴预切好的小图
-    //putimage 默认是不透明的
+    // 根据方向，直接缩放到目标尺寸绘制
     if (flip) {
-        DrawAlpha(target, x, y, f.imgFlipped);
+        DrawAlpha(target, x, y, destW, destH, f.imgFlipped);
     } else {
-        DrawAlpha(target, x, y, f.imgOriginal);
+        DrawAlpha(target, x, y, destW, destH, f.imgOriginal);
     }
 }
 

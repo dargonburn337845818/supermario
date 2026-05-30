@@ -1,9 +1,7 @@
 {
     "image_name":"level_1",
     "maps":[
-        {"start_x":   0, "end_x": 9086, "player_x": 110, "player_y":538},
-        {"start_x":9090, "end_x": 9890, "player_x":  80, "player_y": 60},
-        {"start_x":6740, "end_x": 9086, "player_x": 270, "player_y":450}
+        {"start_x":   0, "end_x": 9086, "player_x": 110, "player_y":538}
     ],
     "ground":[
         {"x":   0, "y":538, "width":2953, "height":60},
@@ -15,10 +13,10 @@
         {"x":1201, "y":451, "width": 83, "height": 84, "type":0},
         {"x":1629, "y":409, "width": 83, "height":126, "type":0},
         {"x":1972, "y":366, "width": 83, "height":170, "type":0},
-        {"x":2444, "y":366, "width": 83, "height":170, "type":1},
+        {"x":2444, "y":366, "width": 83, "height":170, "type":0},
         {"x":6987, "y":451, "width": 83, "height": 84, "type":0},
         {"x":7673, "y":451, "width": 83, "height": 84, "type":0},
-        {"x":9724, "y":451, "width": 40, "height": 84, "type":2}
+        {"x":9724, "y":451, "width": 40, "height": 84, "type":0}
     ],
     "step":[
         {"x":5745, "y":495, "width": 40, "height": 44},
@@ -111,13 +109,8 @@
         {"x":5574, "y":365, "type":0},
         {"x":7202, "y":365, "type":0},
         {"x":7245, "y":365, "type":0},
-        {"x":7331, "y":365, "type":0},
+        {"x":7331, "y":365, "type":0}
 
-        {"x":9090, "y": 64, "type":0, "color":1,"brick_num":11, "direction":1},
-        {"x":9310, "y": 64, "type":0, "color":1,"brick_num":7, "direction":0},
-        {"x":9310, "y":406, "type":0, "color":1,"brick_num":7, "direction":0},
-        {"x":9310, "y":449, "type":0, "color":1,"brick_num":7, "direction":0},
-        {"x":9310, "y":492, "type":0, "color":1,"brick_num":7, "direction":0}
     ],
     "box":[
         {"x": 685, "y":365, "type":1},

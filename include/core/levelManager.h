@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include "Utils\AABB.h"
+#include <graphics.h>
 
 // 地图区域/重生点
 struct MapArea {
@@ -60,12 +61,22 @@ struct SolidCollider {
     AABB bounds;
     SolidType type;
     int index; // 记录它在原始数组中的索引，方便后续交互
+    bool isHit = false;
+    float bounceOffset = 0.0f; // Y轴弹跳偏移
+    int bounceTimer = 0;
+};
+
+struct CoinEffect {
+    float x, y;
+    float velY = -8.0f; // 向上弹射的初速度
+    int life = 30;      // 30帧后消失
 };
 
 class LevelManager {
 public:
     LevelManager();
     bool LoadLevel(const std::string& filePath);
+    void OnBlockHit(int index, SolidType type); //头顶方块
 
     // 解析数据存储 (注意 Ground 和 Step 类型的变化)
     const std::string& GetImageName() const { return m_ImageName; }
@@ -79,16 +90,34 @@ public:
     const std::unordered_map<int, std::vector<EnemySpawn>>& GetEnemyGroups() const { return m_EnemyGroups; }
     const std::vector<Checkpoint>& GetCheckpoints() const { return m_Checkpoints; }
     const std::vector<Flagpole>& GetFlagpoles() const { return m_Flagpoles; }
+    const std::vector<CoinEffect>& GetCoinEffects() const { return m_CoinEffects; }
 
     // 让物理系统拿到所有参与碰撞的物体的统一列表
     const std::vector<SolidCollider>&GetSolidColliders() const {
         return m_SolidColliders;
     }
 
+    // 撞击指定索引的方块
+    void HitBlock(int index) {
+        if (index >= 0 && index < m_SolidColliders.size()) {
+            m_SolidColliders[index].isHit = true;
+        }
+    }
+    
+    // 检查方块是否已被撞击（防止重复顶出金币）
+    bool IsBlockHit(int index) const {
+        if (index >= 0 && index < m_SolidColliders.size()) {
+            return m_SolidColliders[index].isHit;
+        }
+        return true; // 越界当已撞处理
+    }
+
+    void SpawnCoinEffect(int blockIndex);
+    void UpdateEffects(); // 每帧调用
+
 private:
 
     void BuildSolidColliders(); //碰撞数据烘焙管线
-    
     std::string m_ImageName;
     std::vector<MapArea> m_Maps;
     std::vector<AABB> m_Grounds;                                    
@@ -102,4 +131,6 @@ private:
     std::vector<Flagpole> m_Flagpoles;
     
     std::vector<SolidCollider> m_SolidColliders;
+    std::vector<CoinEffect> m_CoinEffects;
+    
 };

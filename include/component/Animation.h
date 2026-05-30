@@ -21,7 +21,7 @@ public:
     ~Animation();
 
     //专门用于绘制带 Alpha 通道的透明图片
-    void DrawAlpha(IMAGE* target, int x, int y, IMAGE* img);
+    static void DrawAlpha(IMAGE* target, int x, int y, int destW, int destH, IMAGE* img);
 
     void Load(const std::string& imagePath, const std::string& jsonPath); //读取所有动画集数据
 
@@ -29,7 +29,7 @@ public:
 
     void SetFrameIndex(int index); //设置帧
 
-    void Draw(IMAGE* target, int x, int y, bool flip = false); //决定左右动画集
+    void Draw(IMAGE* target, int x, int y, int destW, int destH, bool flip = false); //决定左右动画集
 
     int GetCurrentFrameWidth() const;
     int GetCurrentFrameHeight() const;

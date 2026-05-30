@@ -16,6 +16,7 @@ Game::~Game(){
     // 析构函数，如果 Init 里 new 了东西，这里要 delete
     if(Player)delete Player;
     if(m_GameScreen)delete m_GameScreen;
+    if(m_ScaledBg) delete m_ScaledBg;
 }
 
 void Game::Init(){
@@ -24,10 +25,10 @@ void Game::Init(){
     BeginBatchDraw(); // 开启双缓冲模式
 
     loadimage(&m_LevelBackground, _T("res\\level\\level_1.png")); //铺背景
-
-    m_Camera.Init(windowWidth, windowHeight,
-              m_LevelBackground.getwidth(),
-              m_LevelBackground.getheight());
+    loadimage(&m_ImgBrick, _T("res\\graphics\\brick\\2.png")); 
+    loadimage(&m_ImgBox, _T("res\\graphics\\box\\1.png"));
+    loadimage(&m_ImgEmptyBox, _T("res\\graphics\\box\\4.png"));
+    loadimage(&m_ImgCoin, _T("res\\graphics\\coin\\1.png"));
 
     int imgW = m_LevelBackground.getwidth();
     int imgH = m_LevelBackground.getheight();
@@ -43,10 +44,23 @@ void Game::Init(){
         isRunning = false;
         return;
     }
+    int worldW = 9086;
+    int worldH = 600;
+    m_Camera.Init(windowWidth, windowHeight, worldW, worldH);
+
+    m_ScaledBg = new IMAGE(worldW, worldH);
+    HDC dstHdc = GetImageHDC(m_ScaledBg);
+    HDC srcHdc = GetImageHDC(&m_LevelBackground);
+    SetStretchBltMode(dstHdc, COLORONCOLOR);
+    StretchBlt(
+        dstHdc, 0, 0, worldW, worldH,          // 目标：世界尺寸
+        srcHdc, 0, 0, imgW, imgH,              // 源：原始图片
+        SRCCOPY
+    );
 
     // 创建与背景图同尺寸的离屏画布
-    m_GameScreen = new IMAGE(m_LevelBackground.getwidth(), m_LevelBackground.getheight());
-    Player = new Mario(110.0f, 200.0f); 
+     m_GameScreen = new IMAGE(worldW, worldH);
+    Player = new Mario(110.0f, 400.0f); 
     Player->LoadResources("res\\graphics\\mario_bros.png", "res\\graphics\\mario.json");
     isRunning = true; //游戏开始运行
 }
@@ -88,6 +102,8 @@ void Game::ProcessInput(){
 void Game::Update(){
     //计算逻辑
     if(Player) Player->Update(m_LevelMgr);
+    m_Camera.Update(Player->GetX(), Player->GetWidth());
+    m_LevelMgr.UpdateEffects();
 }
 
 void Game::Render(){
@@ -96,25 +112,46 @@ void Game::Render(){
     //清除内存中的渲染
     cleardevice();
     // 绘制背景
-    putimage(0, 0, &m_LevelBackground);
+    putimage(0, 0, m_ScaledBg);
     // 绘制碰撞体 (坐标都是基于 223 高度的)
     for (const auto& wall : m_LevelMgr.GetSolidColliders()) {
         switch (wall.type) {
-            case SolidType::GROUND: setfillcolor(RGB(0, 0, 0)); break;
-            case SolidType::STEP:   setfillcolor(RGB(100, 100, 100)); break;
-            case SolidType::PIPE:   setfillcolor(RGB(0, 255, 0)); break;
-            case SolidType::BRICK:  setfillcolor(RGB(255, 0, 0)); break;
-            case SolidType::BOX:    setfillcolor(RGB(255, 255, 0)); break;
-            default: setfillcolor(RGB(255, 255, 255)); break;
+            case SolidType::BRICK: {
+                HDC dstHdc = GetImageHDC(m_GameScreen); // 目标：内存画布
+                HDC srcHdc = GetImageHDC(&m_ImgBrick);   // 源：砖块贴图
+                SetStretchBltMode(dstHdc, COLORONCOLOR);
+                StretchBlt(
+                    dstHdc, 
+                    wall.bounds.x, wall.bounds.y + wall.bounceOffset, wall.bounds.width, wall.bounds.height, // 拉伸到碰撞框大小
+                    srcHdc, 
+                    0, 0, m_ImgBrick.getwidth(), m_ImgBrick.getheight(),                 // 整张原图
+                    SRCCOPY
+                );
+                continue;
+            }
+            case SolidType::BOX: {
+                HDC dstHdc = GetImageHDC(m_GameScreen); // 目标：内存画布
+                IMAGE* imgToDraw = wall.isHit ? &m_ImgEmptyBox : &m_ImgBox;
+                HDC srcHdc = GetImageHDC(imgToDraw);     // 源：问号箱贴图
+                SetStretchBltMode(dstHdc, COLORONCOLOR);
+                StretchBlt(
+                    dstHdc, 
+                    wall.bounds.x, wall.bounds.y + wall.bounceOffset, wall.bounds.width, wall.bounds.height, // 拉伸到碰撞框大小
+                    srcHdc, 
+                    0, 0, m_ImgBox.getwidth(), m_ImgBox.getheight(),                     // 整张原图
+                    SRCCOPY
+                );
+                continue;
+            }
         }
-        fillrectangle(wall.bounds.x, wall.bounds.y, 
-                      wall.bounds.x + wall.bounds.width, 
-                      wall.bounds.y + wall.bounds.height);
     }   
     // 绘制玩家
     if(Player) Player->Render(m_GameScreen);
-    // 摄像机跟随
-    m_Camera.Update(Player->GetX(), Player->GetWidth());
+    for (const auto& coin : m_LevelMgr.GetCoinEffects()) {
+        if (coin.life < 10 && (coin.life % 2 == 0)) continue; // 闪烁逻辑保留
+        
+        Animation::DrawAlpha(m_GameScreen, (int)coin.x, (int)coin.y, 32, 32, &m_ImgCoin);
+    }
     SetWorkingImage(); // 切换绘图目标回物理窗口
 
     cleardevice();

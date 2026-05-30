@@ -10,7 +10,7 @@ using json = nlohmann::json;
 
 Mario::Mario(float startX, float startY)  {
     x = startX; y = startY;
-    physics.bounds = {x, y, 16.0f, 16.0f}; 
+    physics.bounds = {x, y, 32.0f, 32.0f}; 
 }
 
 Mario::~Mario() {}
@@ -41,7 +41,7 @@ void Mario::LoadResources(const std::string& imagePath, const std::string& jsonP
     }
 }
 
-void Mario::Update(const LevelManager& levelMgr) {
+void Mario::Update(LevelManager& levelMgr) {
     if (isDead) {
         physics.velY += physics.gravity;  // 死亡只受重力
         physics.bounds.y += physics.velY;
@@ -115,9 +115,8 @@ void Mario::Update(const LevelManager& levelMgr) {
     isOnGround = physics.isOnGround;
     // 处理物理系统抛出的撞头事件
     if (physics.hitHead) {
-        // TODO: 根据 physics.hitHeadType 和 physics.hitHeadIndex 触发顶砖块逻辑
-        // 比如: if (physics.hitHeadType == SolidType::BRICK) { ... }
-        physics.hitHead = false; // 重置事件
+        // 将撞击事件交给 LevelManager 处理
+        levelMgr.OnBlockHit(physics.hitHeadIndex, physics.hitHeadType);
     }
     // 左端空气墙
     if (x < 0) {
@@ -169,16 +168,5 @@ void Mario::Update(const LevelManager& levelMgr) {
 }
 
 void Mario::Render(IMAGE* target) {
-    // 获取当前帧宽高用于居中偏移
-    int currentFrameWidth = animation.GetCurrentFrameWidth();
-    int currentFrameHeight = animation.GetCurrentFrameHeight();
-
-    // 使用 physics.bounds 的宽高作为逻辑碰撞箱
-    int logicWidth = (int)physics.bounds.width;
-    int logicHeight = (int)physics.bounds.height;
-    int drawX = (int)x + (logicWidth - currentFrameWidth) / 2; 
-    int drawY = (int)y + (logicHeight - currentFrameHeight); 
-    
-    // 传入 !facingRight 决定是否翻转 (向左时翻转)
-    animation.Draw(target, drawX, drawY, !facingRight);
+    animation.Draw(target, (int)x, (int)y, (int)m_Width, (int)m_Height, !facingRight); 
 }

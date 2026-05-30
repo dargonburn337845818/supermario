@@ -12,20 +12,20 @@ void PhysicsSystem::Update(PhysicsComponent& physics, AABB& entityBox, const Lev
     // LevelManager::BuildSolidColliders() 烘焙好的统一碰撞器列表
     const auto& colliders = levelMgr.GetSolidColliders();
     // --- 2. Y 轴碰撞检测 ---
-    for (const auto& wall : colliders) {
+    for (int i = 0; i < colliders.size(); ++i) {
+        const auto& wall = colliders[i];
         if (IsOverlapping(entityBox, wall.bounds)) {
-            if (physics.velY > 0) { // 正在下落，脚着地
+            if (physics.velY > 0) { 
                 physics.isOnGround = true;
-                entityBox.y = wall.bounds.y - entityBox.height; // 贴合地面
+                entityBox.y = wall.bounds.y - entityBox.height; 
                 physics.velY = 0;
-            } else if (physics.velY < 0) { // 正在上升，头顶撞墙
-                entityBox.y = wall.bounds.y + wall.bounds.height; // 贴合天花板
+            } else if (physics.velY < 0) { 
+                entityBox.y = wall.bounds.y + wall.bounds.height; 
                 physics.velY = 0;
                 
-                // 记录撞头信息，将物理事件转化为游戏逻辑事件
                 physics.hitHead = true;
-                physics.hitHeadType = wall.type;   // 撞到了什么类型？(砖块/问号块/水管)
-                physics.hitHeadIndex = wall.index; // 撞到了哪一个？(用于修改特定砖块的状态)
+                physics.hitHeadType = wall.type;   
+                physics.hitHeadIndex = i;  // 直接使用大数组的真实下标 i
             }
         }
     }

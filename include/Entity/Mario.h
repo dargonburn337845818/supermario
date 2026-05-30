@@ -12,7 +12,7 @@ public:
     ~Mario();
 
     void LoadResources(const std::string& imagePath, const std::string& jsonPath);
-    void Update(const LevelManager& levelMgr);
+    void Update(LevelManager& levelMgr);
     void Render(IMAGE* target); 
 
     float GetX()const { return x; }
@@ -29,8 +29,8 @@ private:
     Animation animation; 
 
     float x, y;
-    float m_Width  = 16.0f;   // ★ 小马里奥逻辑宽度
-    float m_Height = 16.0f;   // ★ 小马里奥逻辑高度
+    float m_Width  = 32.0f;   // ★ 小马里奥逻辑宽度
+    float m_Height = 32.0f;   // ★ 小马里奥逻辑高度
 
     int walkFrameTimer = 0; //动画计时器，固定帧数后切换动画帧
     int walkFrameIndex = 1; //动画帧索引
